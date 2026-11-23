@@ -28,6 +28,12 @@ jobs:
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o ../app/src/main/jniLibs/arm64-v8a/libchaincore.so .
           CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -trimpath -ldflags="-s -w" -o ../app/src/main/jniLibs/armeabi-v7a/libchaincore.so .
 
+      - name: Set up Go 1.20 for tun2socks v2.5.2
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.20'
+          cache: false
+
       - name: Compile xjasonlyu/tun2socks v2.5.2
         run: |
           git clone --depth 1 --branch v2.5.2 https://github.com/xjasonlyu/tun2socks.git /tmp/tun2socks
