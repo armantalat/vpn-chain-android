@@ -1,0 +1,15 @@
+# Gradle & Android Studio
+.gradle/
+.idea/
+local.properties
+*.iml
+build/
+app/build/
+captures/
+
+# Compiled native binaries (built automatically by CI or build script)
+app/src/main/jniLibs/
+*.apk
+*.aab
+*.keystore
+*.jks

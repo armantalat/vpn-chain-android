@@ -1,0 +1,66 @@
+name: Build Android APK (Go Core + Compose UI)
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Compile Go Native Core (PPTP + MS-CHAPv2 + MPPE + SmartProxy)
+        run: |
+          mkdir -p app/src/main/jniLibs/arm64-v8a app/src/main/jniLibs/armeabi-v7a
+          cd core
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o ../app/src/main/jniLibs/arm64-v8a/libchaincore.so .
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -trimpath -ldflags="-s -w" -o ../app/src/main/jniLibs/armeabi-v7a/libchaincore.so .
+
+      - name: Compile xjasonlyu/tun2socks v2.5.2
+        run: |
+          git clone --depth 1 --branch v2.5.2 https://github.com/xjasonlyu/tun2socks.git /tmp/tun2socks
+          cd /tmp/tun2socks
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o "$GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a/libtun2socks.so" .
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -trimpath -ldflags="-s -w" -o "$GITHUB_WORKSPACE/app/src/main/jniLibs/armeabi-v7a/libtun2socks.so" .
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build Debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk VPNChain-Android.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VPNChain-Android-APK
+          path: VPNChain-Android.apk
+
+      - name: Create GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: VPNChain-Android.apk
+          generate_release_notes: true
